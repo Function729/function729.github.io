@@ -1,0 +1,73 @@
+{
+    code 0,
+    data {
+        total 2,
+        pages 1,
+        pageNum 1,
+        pageSize 20,
+        dataList [
+            {
+                deviceModelNumber light_1,
+                deviceModelName 照明回路,
+                variableId 1013034334001672192,
+                variableName 开关设置,
+                abbreviation ,
+                staticVariableId null,
+                staticVariableName null,
+                staticVariableCode null,
+                variableCode OnOffSetup,
+                statusVariable OnOffState,
+                variableType 1,
+                variableTypeDisplay 状态量,
+                dataType enum,
+                unit ,
+                unitCoefficient 0.0,
+                readWriteType 2,
+                readWriteTypeDisplay 读写,
+                control 0,
+                controlDisplay 可控,
+                industry ,
+                decimalPlace null,
+                max ,
+                min ,
+                enumDef [
+                    {
+                        attribute 0,
+                        name 关机
+                    },
+                    {
+                        attribute 1,
+                        name 开机
+                    }
+                ]
+            },
+            {
+                deviceModelNumber light_1,
+                deviceModelName 照明回路,
+                variableId 1012659477672837120,
+                variableName 总电能,
+                abbreviation totalCombineActiveEnergy,
+                staticVariableId null,
+                staticVariableName null,
+                staticVariableCode null,
+                variableCode totalCombineActiveEnergy,
+                statusVariable ,
+                variableType 0,
+                variableTypeDisplay 模拟量,
+                dataType integer,
+                unit 度,
+                unitCoefficient 0.0,
+                readWriteType 1,
+                readWriteTypeDisplay 只读,
+                control 0,
+                controlDisplay 可控,
+                industry ,
+                decimalPlace null,
+                max 100,
+                min 12,
+                enumDef null
+            }
+        ]
+    },
+    msg 
+}

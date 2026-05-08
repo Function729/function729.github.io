@@ -1,0 +1,341 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>空调控制面板</title>
+
+<style>
+    * {
+        box-sizing: border-box;
+        margin: 0;
+        padding: 0;
+        font-family: "Microsoft YaHei", sans-serif;
+    }
+
+    body {
+        background: #0b1f3a;
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        height: 100vh;
+    }
+
+    .panel {
+        width: 720px;
+        background: linear-gradient(180deg, #103a67 0%, #0a2747 100%);
+        border: 1px solid rgba(255,255,255,0.15);
+        border-radius: 10px;
+        color: white;
+        padding: 20px;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .panel::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        background-image:
+            linear-gradient(rgba(255,255,255,0.03) 1px, transparent 1px),
+            linear-gradient(90deg, rgba(255,255,255,0.03) 1px, transparent 1px);
+        background-size: 40px 40px;
+        pointer-events: none;
+    }
+
+    .header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 18px;
+        position: relative;
+        z-index: 1;
+    }
+
+    .title {
+        font-size: 28px;
+        font-weight: bold;
+    }
+
+    .download-btn {
+        background: #2d8cff;
+        border: none;
+        color: white;
+        padding: 8px 18px;
+        border-radius: 6px;
+        cursor: pointer;
+    }
+
+    .section {
+        margin-top: 18px;
+        position: relative;
+        z-index: 1;
+    }
+
+    .section-title {
+        color: #9cc9ff;
+        font-size: 18px;
+        margin-bottom: 15px;
+        border-bottom: 1px solid rgba(255,255,255,0.12);
+        padding-bottom: 6px;
+    }
+
+    .grid {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 18px 40px;
+    }
+
+    .item {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .label {
+        color: #c8e5ff;
+        font-size: 15px;
+    }
+
+    .value-box {
+        min-width: 120px;
+        background: rgba(255,255,255,0.08);
+        border: 1px solid rgba(255,255,255,0.15);
+        border-radius: 6px;
+        padding: 8px 12px;
+        text-align: center;
+        color: white;
+    }
+
+    .switch {
+        width: 58px;
+        height: 28px;
+        background: #2d8cff;
+        border-radius: 30px;
+        position: relative;
+    }
+
+    .switch::after {
+        content: "";
+        width: 22px;
+        height: 22px;
+        background: white;
+        border-radius: 50%;
+        position: absolute;
+        top: 3px;
+        right: 3px;
+    }
+
+    .status-list {
+        display: grid;
+        grid-template-columns: 1fr 1fr;
+        gap: 14px 40px;
+    }
+
+    .status-item {
+        display: flex;
+        align-items: center;
+    }
+
+    .dot {
+        width: 8px;
+        height: 8px;
+        border-radius: 50%;
+        background: #7fd1ff;
+        margin-right: 10px;
+    }
+
+    .status-label {
+        color: #c8e5ff;
+        margin-right: 8px;
+    }
+
+    .status-value {
+        color: white;
+        font-weight: bold;
+    }
+
+    .hidden {
+        display: none;
+    }
+</style>
+</head>
+
+<body>
+
+<div class="panel">
+
+    <div class="header">
+        <div class="title" id="roomName">5#会客厅-三菱2</div>
+        <button class="download-btn">下载</button>
+    </div>
+
+    <!-- 控制设置 -->
+    <div class="section" id="controlSection">
+        <div class="section-title">控制设置</div>
+
+        <div class="grid">
+
+            <div class="item">
+                <div class="label">开关机：</div>
+                <div class="switch"></div>
+            </div>
+
+            <div class="item">
+                <div class="label">运行模式：</div>
+                <div class="value-box" id="mode">制冷</div>
+            </div>
+
+            <div class="item">
+                <div class="label">风向设置：</div>
+                <div class="value-box" id="windDirection">水平</div>
+            </div>
+
+            <div class="item">
+                <div class="label">风速设置：</div>
+                <div class="value-box" id="windSpeed">低速</div>
+            </div>
+
+            <div class="item">
+                <div class="label">温度设置：</div>
+                <div class="value-box" id="temp">24 ℃</div>
+            </div>
+
+        </div>
+    </div>
+
+    <!-- 实时参数 -->
+    <div class="section" id="statusSection">
+
+        <div class="section-title">实时参数</div>
+
+        <div class="status-list">
+
+            <div class="status-item">
+                <div class="dot"></div>
+                <div class="status-label">运行状态：</div>
+                <div class="status-value" id="runState">开机</div>
+            </div>
+
+            <div class="status-item">
+                <div class="dot"></div>
+                <div class="status-label">故障告警：</div>
+                <div class="status-value" id="alarm">正常</div>
+            </div>
+
+            <div class="status-item">
+                <div class="dot"></div>
+                <div class="status-label">通信状态：</div>
+                <div class="status-value" id="connect">正常</div>
+            </div>
+
+            <div class="status-item">
+                <div class="dot"></div>
+                <div class="status-label">运行模式：</div>
+                <div class="status-value" id="realMode">制冷</div>
+            </div>
+
+            <div class="status-item">
+                <div class="dot"></div>
+                <div class="status-label">风向状态：</div>
+                <div class="status-value" id="realWindDirection">水平</div>
+            </div>
+
+            <div class="status-item">
+                <div class="dot"></div>
+                <div class="status-label">风速状态：</div>
+                <div class="status-value" id="realWindSpeed">低速</div>
+            </div>
+
+            <div class="status-item">
+                <div class="dot"></div>
+                <div class="status-label">室内温度：</div>
+                <div class="status-value" id="roomTemp">26℃</div>
+            </div>
+
+            <div class="status-item">
+                <div class="dot"></div>
+                <div class="status-label">错误代码：</div>
+                <div class="status-value" id="errorCode">正常</div>
+            </div>
+
+        </div>
+    </div>
+
+</div>
+
+<script>
+
+/*
+    后期你可以通过接收 JSON 来更新界面
+    这里只做一个简单壳
+*/
+
+const data = {
+
+    roomName: "5#会客厅-三菱2",
+
+    controlVisible: true,
+    statusVisible: true,
+
+    mode: "制冷",
+    windDirection: "水平",
+    windSpeed: "低速",
+    temp: "24 ℃",
+
+    runState: "开机",
+    alarm: "正常",
+    connect: "正常",
+    realMode: "制冷",
+    realWindDirection: "水平",
+    realWindSpeed: "低速",
+    roomTemp: "26℃",
+    errorCode: "正常"
+};
+
+function updateUI(json) {
+
+    // 标题
+    document.getElementById("roomName").innerText = json.roomName;
+
+    // 控制设置显示隐藏
+    document.getElementById("controlSection").style.display =
+        json.controlVisible ? "block" : "none";
+
+    // 实时参数显示隐藏
+    document.getElementById("statusSection").style.display =
+        json.statusVisible ? "block" : "none";
+
+    // 控制设置
+    document.getElementById("mode").innerText = json.mode;
+    document.getElementById("windDirection").innerText = json.windDirection;
+    document.getElementById("windSpeed").innerText = json.windSpeed;
+    document.getElementById("temp").innerText = json.temp;
+
+    // 实时参数
+    document.getElementById("runState").innerText = json.runState;
+    document.getElementById("alarm").innerText = json.alarm;
+    document.getElementById("connect").innerText = json.connect;
+    document.getElementById("realMode").innerText = json.realMode;
+    document.getElementById("realWindDirection").innerText = json.realWindDirection;
+    document.getElementById("realWindSpeed").innerText = json.realWindSpeed;
+    document.getElementById("roomTemp").innerText = json.roomTemp;
+    document.getElementById("errorCode").innerText = json.errorCode;
+}
+
+// 初始化
+updateUI(data);
+
+/*
+    后期你只需要：
+
+    updateUI(你的JSON);
+
+    就能刷新整个界面
+*/
+
+</script>
+
+</body>
+</html>
+
