@@ -1,0 +1,887 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Excel 图片导出工具</title>
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --panel: #ffffff;
+      --text: #17202a;
+      --muted: #667085;
+      --line: #d9dee7;
+      --primary: #0f6cbd;
+      --primary-dark: #0b5798;
+      --ok: #16833a;
+      --warn: #9a5b00;
+      --bad: #b42318;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font: 14px/1.5 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    main {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 28px 20px 40px;
+    }
+
+    header {
+      margin-bottom: 20px;
+    }
+
+    h1 {
+      margin: 0 0 8px;
+      font-size: 28px;
+      font-weight: 700;
+      letter-spacing: 0;
+    }
+
+    p {
+      margin: 0;
+      color: var(--muted);
+    }
+
+    .panel {
+      background: var(--panel);
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      padding: 18px;
+      margin-top: 16px;
+    }
+
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 16px;
+    }
+
+    label {
+      display: block;
+      margin-bottom: 6px;
+      color: #344054;
+      font-weight: 600;
+    }
+
+    input,
+    select {
+      width: 100%;
+      min-height: 40px;
+      border: 1px solid #cbd5e1;
+      border-radius: 6px;
+      padding: 8px 10px;
+      color: var(--text);
+      background: #fff;
+      font: inherit;
+    }
+
+    input[type="file"] {
+      padding: 7px;
+    }
+
+    .actions {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 10px;
+      margin-top: 16px;
+      align-items: center;
+    }
+
+    button {
+      min-height: 40px;
+      border: 0;
+      border-radius: 6px;
+      padding: 8px 14px;
+      background: var(--primary);
+      color: #fff;
+      font: inherit;
+      font-weight: 600;
+      cursor: pointer;
+    }
+
+    button:hover {
+      background: var(--primary-dark);
+    }
+
+    button:disabled {
+      background: #98a2b3;
+      cursor: not-allowed;
+    }
+
+    .status {
+      min-height: 22px;
+      color: var(--muted);
+    }
+
+    .status.ok {
+      color: var(--ok);
+    }
+
+    .status.warn {
+      color: var(--warn);
+    }
+
+    .status.bad {
+      color: var(--bad);
+    }
+
+    .log {
+      max-height: 340px;
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fbfcfe;
+      padding: 10px 12px;
+      white-space: pre-wrap;
+      word-break: break-word;
+      color: #344054;
+      font-family: Consolas, "SFMono-Regular", monospace;
+      font-size: 13px;
+    }
+
+    .hint {
+      margin-top: 10px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    .table-wrap {
+      overflow: auto;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+    }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      min-width: 620px;
+      font-size: 13px;
+    }
+
+    th,
+    td {
+      border-bottom: 1px solid var(--line);
+      padding: 8px 10px;
+      text-align: left;
+      vertical-align: top;
+    }
+
+    th {
+      background: #f2f4f7;
+      color: #344054;
+      font-weight: 700;
+      position: sticky;
+      top: 0;
+    }
+
+    tbody tr:last-child td {
+      border-bottom: 0;
+    }
+
+    .num {
+      width: 86px;
+      color: var(--muted);
+      white-space: nowrap;
+    }
+
+    .preview-head {
+      display: flex;
+      justify-content: space-between;
+      gap: 12px;
+      align-items: center;
+      margin-bottom: 10px;
+    }
+
+    .preview-title {
+      font-weight: 700;
+      color: #344054;
+    }
+
+    @media (max-width: 720px) {
+      main {
+        padding: 20px 14px 32px;
+      }
+
+      .grid {
+        grid-template-columns: 1fr;
+      }
+
+      h1 {
+        font-size: 23px;
+      }
+    }
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Excel 图片导出工具</h1>
+      <p>读取 .xlsx 中插入的图片，按图片所在行的指定列文字命名，并下载为 zip。</p>
+    </header>
+
+    <section class="panel">
+      <div class="grid">
+        <div>
+          <label for="fileInput">Excel 文件</label>
+          <input id="fileInput" type="file" accept=".xlsx,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet">
+        </div>
+        <div>
+          <label for="sheetSelect">工作表</label>
+          <select id="sheetSelect" disabled>
+            <option value="">先选择 .xlsx 文件</option>
+          </select>
+        </div>
+        <div>
+          <label for="columnInput">命名列</label>
+          <input id="columnInput" value="A" placeholder="例如 A、B、AA 或 1">
+        </div>
+        <div>
+          <label for="prefixInput">文件名前缀</label>
+          <input id="prefixInput" value="" placeholder="可选">
+        </div>
+        <div>
+          <label for="startRowInput">起始行</label>
+          <input id="startRowInput" type="number" min="1" step="1" placeholder="留空表示从第 1 行">
+        </div>
+        <div>
+          <label for="endRowInput">结束行</label>
+          <input id="endRowInput" type="number" min="1" step="1" placeholder="留空表示到最后一行">
+        </div>
+      </div>
+
+      <div class="actions">
+        <button id="previewButton" disabled>生成预览</button>
+        <button id="exportButton" disabled>导出图片</button>
+        <span id="status" class="status">等待选择文件</span>
+      </div>
+      <div class="hint">图片需要以 Excel 的“随单元格移动/锚定”方式放在对应行附近；本工具按图片锚点起始行匹配指定列。</div>
+    </section>
+
+    <section class="panel">
+      <div class="preview-head">
+        <div class="preview-title">导出预览</div>
+        <div id="previewSummary" class="status">暂无预览</div>
+      </div>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th class="num">行号</th>
+              <th>命名列文本</th>
+              <th class="num">图片数</th>
+              <th>文件名预览</th>
+            </tr>
+          </thead>
+          <tbody id="previewBody">
+            <tr>
+              <td colspan="4">选择文件后点击“生成预览”。</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section class="panel">
+      <div id="log" class="log">暂无日志</div>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/jszip@3.10.1/dist/jszip.min.js"></script>
+  <script>
+    const fileInput = document.getElementById("fileInput");
+    const sheetSelect = document.getElementById("sheetSelect");
+    const columnInput = document.getElementById("columnInput");
+    const prefixInput = document.getElementById("prefixInput");
+    const startRowInput = document.getElementById("startRowInput");
+    const endRowInput = document.getElementById("endRowInput");
+    const previewButton = document.getElementById("previewButton");
+    const exportButton = document.getElementById("exportButton");
+    const statusEl = document.getElementById("status");
+    const logEl = document.getElementById("log");
+    const previewSummary = document.getElementById("previewSummary");
+    const previewBody = document.getElementById("previewBody");
+
+    let workbookState = null;
+
+    fileInput.addEventListener("change", async () => {
+      resetUi("正在读取文件...");
+      const file = fileInput.files && fileInput.files[0];
+      if (!file) {
+        setStatus("等待选择文件");
+        return;
+      }
+
+      try {
+        const buffer = await file.arrayBuffer();
+        const zip = await JSZip.loadAsync(buffer);
+        const workbook = await loadWorkbook(zip);
+        workbookState = { file, zip, workbook };
+        fillSheets(workbook.sheets);
+        setStatus(`已读取 ${workbook.sheets.length} 个工作表`, "ok");
+        writeLog(`文件：${file.name}\n工作表：\n${workbook.sheets.map(s => `- ${s.name}`).join("\n")}`);
+        previewButton.disabled = workbook.sheets.length === 0;
+        exportButton.disabled = workbook.sheets.length === 0;
+      } catch (error) {
+        workbookState = null;
+        sheetSelect.disabled = true;
+        previewButton.disabled = true;
+        exportButton.disabled = true;
+        setStatus(error.message || String(error), "bad");
+        writeLog(error.stack || String(error));
+      }
+    });
+
+    previewButton.addEventListener("click", async () => {
+      if (!workbookState) return;
+
+      previewButton.disabled = true;
+      setStatus("正在生成预览...");
+
+      try {
+        const options = readOptions();
+        const preview = await buildPreview(
+          workbookState.zip,
+          workbookState.workbook,
+          options.sheet,
+          options.nameColumn,
+          options.rowRange,
+          options.prefix
+        );
+        renderPreview(preview);
+        setStatus(`预览 ${preview.rows.length} 行，${preview.exportableCount} 张可导出图片`, "ok");
+        writeLog(preview.logs.join("\n"));
+      } catch (error) {
+        setStatus(error.message || String(error), "bad");
+        writeLog(error.stack || String(error));
+      } finally {
+        previewButton.disabled = false;
+      }
+    });
+
+    exportButton.addEventListener("click", async () => {
+      if (!workbookState) return;
+
+      exportButton.disabled = true;
+      setStatus("正在导出...");
+      writeLog("开始解析图片和单元格...");
+
+      try {
+        const options = readOptions();
+        const result = await exportImages(
+          workbookState.zip,
+          workbookState.workbook,
+          options.sheet,
+          options.nameColumn,
+          options.rowRange,
+          options.prefix
+        );
+
+        if (result.count === 0) {
+          setStatus("没有可导出的图片", "warn");
+          writeLog(result.logs.join("\n"));
+          return;
+        }
+
+        const zipBlob = await result.outputZip.generateAsync({ type: "blob" });
+        const baseName = stripExtension(workbookState.file.name);
+        downloadBlob(zipBlob, `${baseName}_images.zip`);
+        setStatus(`已导出 ${result.count} 张图片`, "ok");
+        writeLog(result.logs.join("\n"));
+      } catch (error) {
+        setStatus(error.message || String(error), "bad");
+        writeLog(error.stack || String(error));
+      } finally {
+        exportButton.disabled = false;
+      }
+    });
+
+    function resetUi(message) {
+      workbookState = null;
+      sheetSelect.innerHTML = "<option value=\"\">读取中...</option>";
+      sheetSelect.disabled = true;
+      previewButton.disabled = true;
+      exportButton.disabled = true;
+      clearPreview();
+      setStatus(message);
+      writeLog("暂无日志");
+    }
+
+    function setStatus(message, type) {
+      statusEl.textContent = message;
+      statusEl.className = `status ${type || ""}`.trim();
+    }
+
+    function writeLog(message) {
+      logEl.textContent = message || "暂无日志";
+    }
+
+    function fillSheets(sheets) {
+      sheetSelect.innerHTML = "";
+      sheets.forEach((sheet, index) => {
+        const option = document.createElement("option");
+        option.value = String(index);
+        option.textContent = sheet.name;
+        sheetSelect.appendChild(option);
+      });
+      sheetSelect.disabled = sheets.length === 0;
+    }
+
+    function clearPreview() {
+      previewSummary.textContent = "暂无预览";
+      previewSummary.className = "status";
+      previewBody.innerHTML = "<tr><td colspan=\"4\">选择文件后点击“生成预览”。</td></tr>";
+    }
+
+    function renderPreview(preview) {
+      previewSummary.textContent = `${preview.rows.length} 行，${preview.exportableCount} 张可导出图片`;
+      previewSummary.className = preview.exportableCount > 0 ? "status ok" : "status warn";
+
+      if (preview.rows.length === 0) {
+        previewBody.innerHTML = "<tr><td colspan=\"4\">当前范围内没有检测到命名列文本或图片。</td></tr>";
+        return;
+      }
+
+      const html = preview.rows.map(row => {
+        const filenameText = row.filenames.length > 0 ? row.filenames.map(escapeHtml).join("<br>") : "不可导出";
+        return `
+          <tr>
+            <td class="num">${escapeHtml(String(row.row))}</td>
+            <td>${escapeHtml(row.name || "")}</td>
+            <td class="num">${escapeHtml(String(row.imageCount))}</td>
+            <td>${filenameText}</td>
+          </tr>
+        `;
+      }).join("");
+
+      previewBody.innerHTML = html;
+    }
+
+    function readOptions() {
+      const selectedIndex = Number(sheetSelect.value);
+      const sheet = workbookState.workbook.sheets[selectedIndex];
+      if (!sheet) throw new Error("请选择工作表。");
+
+      return {
+        sheet,
+        nameColumn: parseColumn(columnInput.value.trim()),
+        rowRange: parseRowRange(startRowInput.value.trim(), endRowInput.value.trim()),
+        prefix: prefixInput.value.trim()
+      };
+    }
+
+    function parseRowRange(startText, endText) {
+      const start = startText ? Number(startText) : 1;
+      const end = endText ? Number(endText) : Infinity;
+
+      if (!Number.isInteger(start) || start < 1) {
+        throw new Error("起始行必须是大于 0 的整数。");
+      }
+
+      if (end !== Infinity && (!Number.isInteger(end) || end < 1)) {
+        throw new Error("结束行必须是大于 0 的整数。");
+      }
+
+      if (end !== Infinity && start > end) {
+        throw new Error("起始行不能大于结束行。");
+      }
+
+      return { start, end };
+    }
+
+    function rowInRange(row, rowRange) {
+      return row >= rowRange.start && row <= rowRange.end;
+    }
+
+    function formatRowRange(rowRange) {
+      const end = rowRange.end === Infinity ? "最后一行" : `第 ${rowRange.end} 行`;
+      return `第 ${rowRange.start} 行 到 ${end}`;
+    }
+
+    function groupAnchorsByExcelRow(anchors) {
+      const map = new Map();
+      for (const anchor of anchors) {
+        const excelRow = anchor.row + 1;
+        if (!map.has(excelRow)) map.set(excelRow, []);
+        map.get(excelRow).push(anchor);
+      }
+      return map;
+    }
+
+    function escapeHtml(text) {
+      return text
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+    }
+
+    async function loadWorkbook(zip) {
+      const parser = new DOMParser();
+      const workbookXml = await readText(zip, "xl/workbook.xml");
+      const workbookRelsXml = await readText(zip, "xl/_rels/workbook.xml.rels");
+      const workbookDoc = parseXml(parser, workbookXml, "workbook.xml");
+      const relsDoc = parseXml(parser, workbookRelsXml, "workbook.xml.rels");
+      const rels = readRelationships(relsDoc);
+      const sharedStrings = await loadSharedStrings(zip, parser);
+
+      const sheets = Array.from(workbookDoc.getElementsByTagNameNS("*", "sheet")).map(sheetNode => {
+        const name = sheetNode.getAttribute("name") || "Sheet";
+        const relId = sheetNode.getAttributeNS("http://schemas.openxmlformats.org/officeDocument/2006/relationships", "id")
+          || sheetNode.getAttribute("r:id");
+        const rel = rels.get(relId);
+        if (!rel) return null;
+        return {
+          name,
+          path: normalizeZipPath("xl/" + rel.target)
+        };
+      }).filter(Boolean);
+
+      return { sheets, sharedStrings };
+    }
+
+    async function loadSharedStrings(zip, parser) {
+      const file = zip.file("xl/sharedStrings.xml");
+      if (!file) return [];
+
+      const doc = parseXml(parser, await file.async("text"), "sharedStrings.xml");
+      return Array.from(doc.getElementsByTagNameNS("*", "si")).map(si => {
+        const textNodes = Array.from(si.getElementsByTagNameNS("*", "t"));
+        return textNodes.map(node => node.textContent || "").join("");
+      });
+    }
+
+    async function buildPreview(zip, workbook, sheet, nameColumn, rowRange, prefix) {
+      const data = await readSheetExportData(zip, workbook, sheet, nameColumn);
+      const usedNames = new Map();
+      const rows = [];
+      let exportableCount = 0;
+      const groupedAnchors = groupAnchorsByExcelRow(data.anchors);
+      const rowSet = new Set([
+        ...Array.from(data.rowNames.keys()),
+        ...Array.from(groupedAnchors.keys())
+      ]);
+      const sortedRows = Array.from(rowSet)
+        .filter(row => rowInRange(row, rowRange))
+        .sort((a, b) => a - b);
+
+      for (const row of sortedRows) {
+        const rawName = data.rowNames.get(row) || "";
+        const anchors = groupedAnchors.get(row) || [];
+        const filenames = [];
+
+        for (const anchor of anchors) {
+          if (!rawName.trim()) continue;
+          const extension = extensionOf(anchor.mediaPath) || "bin";
+          const cleanBase = sanitizeFileName((prefix ? prefix + "_" : "") + rawName.trim()) || `row_${row}`;
+          filenames.push(uniqueName(cleanBase, extension, usedNames));
+        }
+
+        exportableCount += filenames.length;
+        rows.push({
+          row,
+          name: rawName,
+          imageCount: anchors.length,
+          filenames
+        });
+      }
+
+      const logs = [
+        `工作表：${sheet.name}`,
+        `命名列：${columnName(nameColumn)}`,
+        `行范围：${formatRowRange(rowRange)}`,
+        `检测到图片锚点：${data.anchors.length} 个`,
+        `范围内可导出图片：${exportableCount} 张`
+      ];
+
+      if (!data.drawingPath) {
+        logs.push("未找到 drawing 关系，当前工作表可能没有插入图片。");
+      }
+
+      return { rows, exportableCount, logs };
+    }
+
+    async function exportImages(zip, workbook, sheet, nameColumn, rowRange, prefix) {
+      const data = await readSheetExportData(zip, workbook, sheet, nameColumn);
+      const logs = [
+        `工作表：${sheet.name}`,
+        `命名列：${columnName(nameColumn)}`,
+        `行范围：${formatRowRange(rowRange)}`
+      ];
+      const outputZip = new JSZip();
+
+      if (!data.drawingPath) {
+        logs.push("未找到 drawing 关系，当前工作表可能没有插入图片。");
+        return { outputZip, count: 0, logs };
+      }
+
+      logs.push(`检测到图片锚点：${data.anchors.length} 个`);
+
+      const usedNames = new Map();
+      let count = 0;
+
+      for (const anchor of data.anchors) {
+        const excelRow = anchor.row + 1;
+        if (!rowInRange(excelRow, rowRange)) {
+          continue;
+        }
+
+        const rawName = data.rowNames.get(excelRow);
+        if (!rawName || !rawName.trim()) {
+          logs.push(`跳过：第 ${excelRow} 行图片没有对应的命名列文本。`);
+          continue;
+        }
+
+        const imageFile = zip.file(anchor.mediaPath);
+        if (!imageFile) {
+          logs.push(`跳过：找不到图片文件 ${anchor.mediaPath}`);
+          continue;
+        }
+
+        const extension = extensionOf(anchor.mediaPath) || "bin";
+        const cleanBase = sanitizeFileName((prefix ? prefix + "_" : "") + rawName.trim()) || `row_${excelRow}`;
+        const finalName = uniqueName(cleanBase, extension, usedNames);
+        const blob = await imageFile.async("blob");
+        outputZip.file(finalName, blob);
+        count += 1;
+        logs.push(`导出：第 ${excelRow} 行 -> ${finalName}`);
+      }
+
+      return { outputZip, count, logs };
+    }
+
+    async function readSheetExportData(zip, workbook, sheet, nameColumn) {
+      const parser = new DOMParser();
+      const worksheetDoc = parseXml(parser, await readText(zip, sheet.path), sheet.path);
+      const rowNames = readColumnValues(worksheetDoc, workbook.sharedStrings, nameColumn);
+      const drawingPath = await findDrawingPath(zip, parser, sheet.path, worksheetDoc);
+
+      if (!drawingPath) {
+        return { rowNames, drawingPath: "", anchors: [] };
+      }
+
+      const drawingDoc = parseXml(parser, await readText(zip, drawingPath), drawingPath);
+      const drawingRelsPath = relsPathFor(drawingPath);
+      const drawingRelsDoc = parseXml(parser, await readText(zip, drawingRelsPath), drawingRelsPath);
+      const drawingRels = readRelationships(drawingRelsDoc);
+      const anchors = readImageAnchors(drawingDoc, drawingRels, drawingPath);
+
+      return { rowNames, drawingPath, anchors };
+    }
+
+    function readColumnValues(worksheetDoc, sharedStrings, nameColumn) {
+      const values = new Map();
+      const cells = Array.from(worksheetDoc.getElementsByTagNameNS("*", "c"));
+
+      for (const cell of cells) {
+        const ref = cell.getAttribute("r");
+        if (!ref) continue;
+
+        const position = parseCellRef(ref);
+        if (!position || position.col !== nameColumn) continue;
+
+        const value = readCellValue(cell, sharedStrings);
+        values.set(position.row, value);
+      }
+
+      return values;
+    }
+
+    function readCellValue(cell, sharedStrings) {
+      const type = cell.getAttribute("t");
+
+      if (type === "inlineStr") {
+        return Array.from(cell.getElementsByTagNameNS("*", "t")).map(node => node.textContent || "").join("");
+      }
+
+      const valueNode = cell.getElementsByTagNameNS("*", "v")[0];
+      const raw = valueNode ? valueNode.textContent || "" : "";
+
+      if (type === "s") {
+        const index = Number(raw);
+        return sharedStrings[index] || "";
+      }
+
+      return raw;
+    }
+
+    async function findDrawingPath(zip, parser, sheetPath, worksheetDoc) {
+      const drawingNode = worksheetDoc.getElementsByTagNameNS("*", "drawing")[0];
+      if (!drawingNode) return "";
+
+      const relId = drawingNode.getAttributeNS("http://schemas.openxmlformats.org/officeDocument/2006/relationships", "id")
+        || drawingNode.getAttribute("r:id");
+      if (!relId) return "";
+
+      const relsDoc = parseXml(parser, await readText(zip, relsPathFor(sheetPath)), relsPathFor(sheetPath));
+      const rel = readRelationships(relsDoc).get(relId);
+      if (!rel) return "";
+
+      return resolveTarget(sheetPath, rel.target);
+    }
+
+    function readImageAnchors(drawingDoc, drawingRels, drawingPath) {
+      const anchorNodes = [
+        ...Array.from(drawingDoc.getElementsByTagNameNS("*", "twoCellAnchor")),
+        ...Array.from(drawingDoc.getElementsByTagNameNS("*", "oneCellAnchor"))
+      ];
+
+      return anchorNodes.map(anchor => {
+        const from = anchor.getElementsByTagNameNS("*", "from")[0];
+        const rowNode = from && from.getElementsByTagNameNS("*", "row")[0];
+        const blip = anchor.getElementsByTagNameNS("*", "blip")[0];
+        const embedId = blip && (
+          blip.getAttributeNS("http://schemas.openxmlformats.org/officeDocument/2006/relationships", "embed")
+          || blip.getAttribute("r:embed")
+        );
+        const rel = embedId && drawingRels.get(embedId);
+        if (!rowNode || !rel) return null;
+
+        return {
+          row: Number(rowNode.textContent || "0"),
+          mediaPath: resolveTarget(drawingPath, rel.target)
+        };
+      }).filter(Boolean);
+    }
+
+    function readRelationships(doc) {
+      const map = new Map();
+      Array.from(doc.getElementsByTagNameNS("*", "Relationship")).forEach(rel => {
+        map.set(rel.getAttribute("Id"), {
+          type: rel.getAttribute("Type") || "",
+          target: rel.getAttribute("Target") || ""
+        });
+      });
+      return map;
+    }
+
+    async function readText(zip, path) {
+      const normalized = normalizeZipPath(path);
+      const file = zip.file(normalized);
+      if (!file) throw new Error(`找不到文件：${normalized}`);
+      return file.async("text");
+    }
+
+    function parseXml(parser, text, label) {
+      const doc = parser.parseFromString(text, "application/xml");
+      const error = doc.getElementsByTagName("parsererror")[0];
+      if (error) throw new Error(`XML 解析失败：${label}`);
+      return doc;
+    }
+
+    function relsPathFor(path) {
+      const normalized = normalizeZipPath(path);
+      const slash = normalized.lastIndexOf("/");
+      const dir = slash >= 0 ? normalized.slice(0, slash + 1) : "";
+      const file = slash >= 0 ? normalized.slice(slash + 1) : normalized;
+      return `${dir}_rels/${file}.rels`;
+    }
+
+    function resolveTarget(basePath, target) {
+      if (target.startsWith("/")) return normalizeZipPath(target.slice(1));
+      const baseParts = normalizeZipPath(basePath).split("/");
+      baseParts.pop();
+      const parts = baseParts.concat(target.split("/"));
+      const resolved = [];
+
+      for (const part of parts) {
+        if (!part || part === ".") continue;
+        if (part === "..") resolved.pop();
+        else resolved.push(part);
+      }
+
+      return resolved.join("/");
+    }
+
+    function normalizeZipPath(path) {
+      return path.replace(/\\/g, "/").replace(/^\/+/, "");
+    }
+
+    function parseColumn(input) {
+      if (!input) throw new Error("请输入命名列。");
+      if (/^\d+$/.test(input)) {
+        const value = Number(input);
+        if (value < 1) throw new Error("命名列必须大于 0。");
+        return value;
+      }
+
+      const text = input.toUpperCase();
+      if (!/^[A-Z]+$/.test(text)) throw new Error("命名列只能是 A、B、AA 或数字。");
+
+      let value = 0;
+      for (const char of text) {
+        value = value * 26 + char.charCodeAt(0) - 64;
+      }
+      return value;
+    }
+
+    function columnName(index) {
+      let name = "";
+      let value = index;
+      while (value > 0) {
+        const mod = (value - 1) % 26;
+        name = String.fromCharCode(65 + mod) + name;
+        value = Math.floor((value - mod) / 26);
+      }
+      return name;
+    }
+
+    function parseCellRef(ref) {
+      const match = /^([A-Z]+)(\d+)$/i.exec(ref);
+      if (!match) return null;
+      return {
+        col: parseColumn(match[1]),
+        row: Number(match[2])
+      };
+    }
+
+    function sanitizeFileName(name) {
+      return name
+        .replace(/[\\/:*?"<>|]/g, "_")
+        .replace(/\s+/g, " ")
+        .replace(/[. ]+$/g, "")
+        .slice(0, 150);
+    }
+
+    function uniqueName(base, extension, usedNames) {
+      let index = usedNames.get(base) || 0;
+      usedNames.set(base, index + 1);
+      const suffix = index === 0 ? "" : `_${index + 1}`;
+      return `${base}${suffix}.${extension}`;
+    }
+
+    function extensionOf(path) {
+      const file = path.split("/").pop() || "";
+      const dot = file.lastIndexOf(".");
+      return dot >= 0 ? file.slice(dot + 1).toLowerCase() : "";
+    }
+
+    function stripExtension(name) {
+      const dot = name.lastIndexOf(".");
+      return dot > 0 ? name.slice(0, dot) : name;
+    }
+
+    function downloadBlob(blob, filename) {
+      const url = URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = url;
+      link.download = filename;
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      URL.revokeObjectURL(url);
+    }
+  </script>
+</body>
+</html>

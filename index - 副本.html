@@ -1,0 +1,113 @@
+<!DOCTYPE html>
+
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<title>UE Interface 模拟测试</title>
+<style>
+  body {
+    font-family: Consolas, monospace;
+    background: transparent;
+    color: #b0cce8;
+    padding: 20px;
+  }
+
+button {
+padding: 8px 12px;
+margin-right: 10px;
+background: #003344;
+color: #00d4ff;
+border: 1px solid #00d4ff;
+cursor: pointer;
+}
+
+.log {
+margin-top: 20px;
+padding: 10px;
+background: #000;
+height: 200px;
+overflow-y: auto;
+font-size: 12px;
+}
+
+.page-watermark {
+position: fixed;
+right: 18px;
+bottom: 14px;
+z-index: 9999;
+pointer-events: none;
+color: rgba(255,255,255,0.32);
+font: 14px/1.2 "Microsoft YaHei", Arial, sans-serif;
+letter-spacing: 0;
+text-shadow: 0 1px 4px rgba(0,0,0,0.35);
+} </style>
+
+</head>
+<body>
+
+<div class="page-watermark">张永昊 · v2026.05.08.1</div>
+
+<h3>UE Interface 模拟</h3>
+
+<button onclick="sendTest()">发送消息</button>
+
+<div class="log" id="log"></div>
+
+<script>
+// ===============================
+// 🟡 日志函数
+// ===============================
+function log(msg) {
+  const box = document.getElementById('log');
+  const div = document.createElement('div');
+  div.textContent = msg;
+  box.appendChild(div);
+  box.scrollTop = box.scrollHeight;
+}
+
+// ===============================
+// 🟡 发送函数（模拟你现在的用法）
+// ===============================
+function sendTest() {
+  if (window.ue && ue.interface && ue.interface.broadcast) {
+    ue.interface.broadcast("test_cmd", { value: 123 });
+  } else {
+    log("[JS] UE 未连接");
+  }
+}
+
+// ===============================
+// 🔴【你要写的地方 ①】
+// 👉 在这里“模拟 UE 注入” window.ue
+// ===============================
+window.ue = {
+  interface: {
+    broadcast: function(cmd, data) {
+      log("[UE模拟] 收到 JS 调用: " + cmd + " " + JSON.stringify(data));
+
+      // 模拟 UE 回调 JS
+      if (this.result) {
+        this.result({
+          command: cmd,
+          result: "success"
+        });
+      }
+    }
+  }
+};
+
+
+// ===============================
+// 🔴【你要写的地方 ②】
+// 👉 在这里实现 UE → JS 回调接收
+// 比如：ue.interface.result = function(...)
+// ===============================
+
+
+ue.interface.result = function(data) {
+  log("[JS] 收到 UE 返回: " + JSON.stringify(data));
+};
+</script>
+
+</body>
+</html>

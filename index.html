@@ -1,113 +1,131 @@
-<!DOCTYPE html>
-
+<!doctype html>
 <html lang="zh-CN">
 <head>
-<meta charset="UTF-8">
-<title>UE Interface 模拟测试</title>
-<style>
-  body {
-    font-family: Consolas, monospace;
-    background: transparent;
-    color: #b0cce8;
-    padding: 20px;
-  }
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Function729 工具目录</title>
+  <style>
+    :root {
+      --bg: #f6f7f9;
+      --panel: #ffffff;
+      --text: #17202a;
+      --muted: #667085;
+      --line: #d9dee7;
+      --primary: #0f6cbd;
+      --primary-dark: #0b5798;
+    }
 
-button {
-padding: 8px 12px;
-margin-right: 10px;
-background: #003344;
-color: #00d4ff;
-border: 1px solid #00d4ff;
-cursor: pointer;
-}
+    * {
+      box-sizing: border-box;
+    }
 
-.log {
-margin-top: 20px;
-padding: 10px;
-background: #000;
-height: 200px;
-overflow-y: auto;
-font-size: 12px;
-}
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--text);
+      font: 15px/1.5 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
 
-.page-watermark {
-position: fixed;
-right: 18px;
-bottom: 14px;
-z-index: 9999;
-pointer-events: none;
-color: rgba(255,255,255,0.32);
-font: 14px/1.2 "Microsoft YaHei", Arial, sans-serif;
-letter-spacing: 0;
-text-shadow: 0 1px 4px rgba(0,0,0,0.35);
-} </style>
+    main {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 36px 20px 48px;
+    }
 
-</head>
-<body>
+    header {
+      margin-bottom: 24px;
+    }
 
-<div class="page-watermark">张永昊 · v2026.05.08.1</div>
+    h1 {
+      margin: 0 0 8px;
+      font-size: 30px;
+      letter-spacing: 0;
+    }
 
-<h3>UE Interface 模拟</h3>
+    p {
+      margin: 0;
+      color: var(--muted);
+    }
 
-<button onclick="sendTest()">发送消息</button>
+    .grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
+      gap: 16px;
+    }
 
-<div class="log" id="log"></div>
+    .tool {
+      display: block;
+      min-height: 154px;
+      padding: 18px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+      color: inherit;
+      text-decoration: none;
+      transition: border-color 160ms ease, box-shadow 160ms ease, transform 160ms ease;
+    }
 
-<script>
-// ===============================
-// 🟡 日志函数
-// ===============================
-function log(msg) {
-  const box = document.getElementById('log');
-  const div = document.createElement('div');
-  div.textContent = msg;
-  box.appendChild(div);
-  box.scrollTop = box.scrollHeight;
-}
+    .tool:hover {
+      border-color: var(--primary);
+      box-shadow: 0 10px 24px rgba(15, 108, 189, 0.12);
+      transform: translateY(-1px);
+    }
 
-// ===============================
-// 🟡 发送函数（模拟你现在的用法）
-// ===============================
-function sendTest() {
-  if (window.ue && ue.interface && ue.interface.broadcast) {
-    ue.interface.broadcast("test_cmd", { value: 123 });
-  } else {
-    log("[JS] UE 未连接");
-  }
-}
+    .tool h2 {
+      margin: 0 0 10px;
+      font-size: 18px;
+      letter-spacing: 0;
+    }
 
-// ===============================
-// 🔴【你要写的地方 ①】
-// 👉 在这里“模拟 UE 注入” window.ue
-// ===============================
-window.ue = {
-  interface: {
-    broadcast: function(cmd, data) {
-      log("[UE模拟] 收到 JS 调用: " + cmd + " " + JSON.stringify(data));
+    .tool p {
+      margin-bottom: 18px;
+    }
 
-      // 模拟 UE 回调 JS
-      if (this.result) {
-        this.result({
-          command: cmd,
-          result: "success"
-        });
+    .open {
+      color: var(--primary);
+      font-weight: 700;
+    }
+
+    .tool:hover .open {
+      color: var(--primary-dark);
+    }
+
+    footer {
+      margin-top: 28px;
+      color: var(--muted);
+      font-size: 13px;
+    }
+
+    @media (max-width: 640px) {
+      main {
+        padding: 24px 14px 36px;
+      }
+
+      h1 {
+        font-size: 24px;
       }
     }
-  }
-};
+  </style>
+</head>
+<body>
+  <main>
+    <header>
+      <h1>Function729 工具目录</h1>
+      <p>常用静态页面工具入口。</p>
+    </header>
 
+    <section class="grid" aria-label="工具列表">
+      <a class="tool" href="./excel-image-exporter.html">
+        <h2>Excel 图片导出工具</h2>
+        <p>读取 .xlsx 中插入的图片，按指定列内容命名，并按行范围导出为 zip。</p>
+        <span class="open">打开工具</span>
+      </a>
+    </section>
 
-// ===============================
-// 🔴【你要写的地方 ②】
-// 👉 在这里实现 UE → JS 回调接收
-// 比如：ue.interface.result = function(...)
-// ===============================
-
-
-ue.interface.result = function(data) {
-  log("[JS] 收到 UE 返回: " + JSON.stringify(data));
-};
-</script>
-
+    <footer>
+      GitHub Pages 静态目录入口。
+    </footer>
+  </main>
 </body>
 </html>
