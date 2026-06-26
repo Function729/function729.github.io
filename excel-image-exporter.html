@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
-  <title>Excel 图片导出工具</title>
+  <title>天马表格图片打包工具</title>
   <style>
     :root {
       --bg: #f6f7f9;
@@ -208,6 +208,51 @@
       color: #344054;
     }
 
+    .range-builder {
+      display: grid;
+      grid-template-columns: minmax(120px, 1fr) minmax(120px, 1fr) auto;
+      gap: 10px;
+      align-items: end;
+      margin-top: 16px;
+    }
+
+    .range-list {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      margin-top: 10px;
+    }
+
+    .range-item {
+      display: inline-flex;
+      align-items: center;
+      gap: 7px;
+      min-height: 34px;
+      border: 1px solid var(--line);
+      border-radius: 6px;
+      background: #fff;
+      padding: 5px 8px;
+      color: #344054;
+    }
+
+    .range-item input {
+      width: auto;
+      min-height: auto;
+      margin: 0;
+    }
+
+    .range-remove {
+      min-height: 24px;
+      padding: 0 7px;
+      background: #eef2f6;
+      color: #344054;
+      font-weight: 700;
+    }
+
+    .range-remove:hover {
+      background: #d9dee7;
+    }
+
     @media (max-width: 720px) {
       main {
         padding: 20px 14px 32px;
@@ -220,13 +265,17 @@
       h1 {
         font-size: 23px;
       }
+
+      .range-builder {
+        grid-template-columns: 1fr;
+      }
     }
   </style>
 </head>
 <body>
   <main>
     <header>
-      <h1>Excel 图片导出工具</h1>
+      <h1>天马表格图片打包工具</h1>
       <p>读取 .xlsx 中插入的图片，按图片所在行的指定列文字命名，并下载为 zip。</p>
     </header>
 
@@ -243,22 +292,31 @@
           </select>
         </div>
         <div>
-          <label for="columnInput">命名列</label>
-          <input id="columnInput" value="A" placeholder="例如 A、B、AA 或 1">
+          <label for="columnInput">标题列</label>
+          <input id="columnInput" value="A" placeholder="用于命名，例如 A、B、AA 或 1">
+        </div>
+        <div>
+          <label for="imageColumnInput">图片所在列</label>
+          <input id="imageColumnInput" value="" placeholder="可选，例如 C；留空则不筛选">
         </div>
         <div>
           <label for="prefixInput">文件名前缀</label>
           <input id="prefixInput" value="" placeholder="可选">
         </div>
+      </div>
+
+      <div class="range-builder">
         <div>
           <label for="startRowInput">起始行</label>
-          <input id="startRowInput" type="number" min="1" step="1" placeholder="留空表示从第 1 行">
+          <input id="startRowInput" type="number" min="1" step="1" placeholder="例如 1">
         </div>
         <div>
           <label for="endRowInput">结束行</label>
-          <input id="endRowInput" type="number" min="1" step="1" placeholder="留空表示到最后一行">
+          <input id="endRowInput" type="number" min="1" step="1" placeholder="例如 3；留空表示同起始行">
         </div>
+        <button id="addRangeButton" type="button">添加条件</button>
       </div>
+      <div id="rangeList" class="range-list" aria-label="行条件列表"></div>
 
       <div class="actions">
         <button id="previewButton" disabled>生成预览</button>
@@ -278,7 +336,7 @@
           <thead>
             <tr>
               <th class="num">行号</th>
-              <th>命名列文本</th>
+              <th>标题列文本</th>
               <th class="num">图片数</th>
               <th>文件名预览</th>
             </tr>
@@ -302,9 +360,12 @@
     const fileInput = document.getElementById("fileInput");
     const sheetSelect = document.getElementById("sheetSelect");
     const columnInput = document.getElementById("columnInput");
+    const imageColumnInput = document.getElementById("imageColumnInput");
     const prefixInput = document.getElementById("prefixInput");
     const startRowInput = document.getElementById("startRowInput");
     const endRowInput = document.getElementById("endRowInput");
+    const addRangeButton = document.getElementById("addRangeButton");
+    const rangeList = document.getElementById("rangeList");
     const previewButton = document.getElementById("previewButton");
     const exportButton = document.getElementById("exportButton");
     const statusEl = document.getElementById("status");
@@ -313,6 +374,9 @@
     const previewBody = document.getElementById("previewBody");
 
     let workbookState = null;
+    let rangeConditions = [];
+
+    renderRangeConditions();
 
     fileInput.addEventListener("change", async () => {
       resetUi("正在读取文件...");
@@ -342,6 +406,42 @@
       }
     });
 
+    addRangeButton.addEventListener("click", () => {
+      try {
+        const range = parseSingleRowRange(startRowInput.value.trim(), endRowInput.value.trim());
+        rangeConditions.push({
+          id: Date.now() + Math.random(),
+          start: range.start,
+          end: range.end,
+          enabled: true
+        });
+        startRowInput.value = "";
+        endRowInput.value = "";
+        renderRangeConditions();
+        setStatus(`已添加行条件：${formatSingleRowRange(range)}`, "ok");
+      } catch (error) {
+        setStatus(error.message || String(error), "bad");
+      }
+    });
+
+    rangeList.addEventListener("change", event => {
+      const checkbox = event.target.closest("[data-range-enabled]");
+      if (!checkbox) return;
+
+      const id = checkbox.getAttribute("data-id");
+      const condition = rangeConditions.find(item => String(item.id) === id);
+      if (condition) condition.enabled = checkbox.checked;
+    });
+
+    rangeList.addEventListener("click", event => {
+      const button = event.target.closest("[data-range-remove]");
+      if (!button) return;
+
+      const id = button.getAttribute("data-id");
+      rangeConditions = rangeConditions.filter(item => String(item.id) !== id);
+      renderRangeConditions();
+    });
+
     previewButton.addEventListener("click", async () => {
       if (!workbookState) return;
 
@@ -354,8 +454,9 @@
           workbookState.zip,
           workbookState.workbook,
           options.sheet,
-          options.nameColumn,
-          options.rowRange,
+          options.titleColumn,
+          options.imageColumn,
+          options.rowRanges,
           options.prefix
         );
         renderPreview(preview);
@@ -382,8 +483,9 @@
           workbookState.zip,
           workbookState.workbook,
           options.sheet,
-          options.nameColumn,
-          options.rowRange,
+          options.titleColumn,
+          options.imageColumn,
+          options.rowRanges,
           options.prefix
         );
 
@@ -448,7 +550,7 @@
       previewSummary.className = preview.exportableCount > 0 ? "status ok" : "status warn";
 
       if (preview.rows.length === 0) {
-        previewBody.innerHTML = "<tr><td colspan=\"4\">当前范围内没有检测到命名列文本或图片。</td></tr>";
+        previewBody.innerHTML = "<tr><td colspan=\"4\">当前条件内没有检测到标题列文本或图片。</td></tr>";
         return;
       }
 
@@ -474,38 +576,54 @@
 
       return {
         sheet,
-        nameColumn: parseColumn(columnInput.value.trim()),
-        rowRange: parseRowRange(startRowInput.value.trim(), endRowInput.value.trim()),
+        titleColumn: parseColumn(columnInput.value.trim()),
+        imageColumn: parseOptionalColumn(imageColumnInput.value.trim()),
+        rowRanges: readEnabledRowRanges(),
         prefix: prefixInput.value.trim()
       };
     }
 
-    function parseRowRange(startText, endText) {
-      const start = startText ? Number(startText) : 1;
-      const end = endText ? Number(endText) : Infinity;
+    function parseSingleRowRange(startText, endText) {
+      if (!startText) {
+        throw new Error("请输入起始行。");
+      }
+
+      const start = Number(startText);
+      const end = endText ? Number(endText) : start;
 
       if (!Number.isInteger(start) || start < 1) {
         throw new Error("起始行必须是大于 0 的整数。");
       }
 
-      if (end !== Infinity && (!Number.isInteger(end) || end < 1)) {
+      if (!Number.isInteger(end) || end < 1) {
         throw new Error("结束行必须是大于 0 的整数。");
       }
 
-      if (end !== Infinity && start > end) {
+      if (start > end) {
         throw new Error("起始行不能大于结束行。");
       }
 
       return { start, end };
     }
 
-    function rowInRange(row, rowRange) {
-      return row >= rowRange.start && row <= rowRange.end;
+    function readEnabledRowRanges() {
+      return rangeConditions
+        .filter(item => item.enabled)
+        .map(item => ({ start: item.start, end: item.end }));
     }
 
-    function formatRowRange(rowRange) {
-      const end = rowRange.end === Infinity ? "最后一行" : `第 ${rowRange.end} 行`;
-      return `第 ${rowRange.start} 行 到 ${end}`;
+    function rowInRanges(row, rowRanges) {
+      if (rowRanges.length === 0) return true;
+      return rowRanges.some(range => row >= range.start && row <= range.end);
+    }
+
+    function formatSingleRowRange(rowRange) {
+      return rowRange.start === rowRange.end ? `第 ${rowRange.start} 行` : `第 ${rowRange.start}-${rowRange.end} 行`;
+    }
+
+    function formatRowRanges(rowRanges) {
+      if (rowRanges.length === 0) return "全部行";
+      return rowRanges.map(formatSingleRowRange).join("，");
     }
 
     function groupAnchorsByExcelRow(anchors) {
@@ -516,6 +634,21 @@
         map.get(excelRow).push(anchor);
       }
       return map;
+    }
+
+    function renderRangeConditions() {
+      if (rangeConditions.length === 0) {
+        rangeList.innerHTML = "<span class=\"hint\">未添加条件时默认显示和导出全部行。</span>";
+        return;
+      }
+
+      rangeList.innerHTML = rangeConditions.map(item => `
+        <label class="range-item">
+          <input type="checkbox" data-range-enabled data-id="${escapeHtml(String(item.id))}" ${item.enabled ? "checked" : ""}>
+          <span>${escapeHtml(formatSingleRowRange(item))}</span>
+          <button class="range-remove" type="button" data-range-remove data-id="${escapeHtml(String(item.id))}" title="删除条件">×</button>
+        </label>
+      `).join("");
     }
 
     function escapeHtml(text) {
@@ -562,8 +695,8 @@
       });
     }
 
-    async function buildPreview(zip, workbook, sheet, nameColumn, rowRange, prefix) {
-      const data = await readSheetExportData(zip, workbook, sheet, nameColumn);
+    async function buildPreview(zip, workbook, sheet, titleColumn, imageColumn, rowRanges, prefix) {
+      const data = await readSheetExportData(zip, workbook, sheet, titleColumn, imageColumn);
       const usedNames = new Map();
       const rows = [];
       let exportableCount = 0;
@@ -573,7 +706,7 @@
         ...Array.from(groupedAnchors.keys())
       ]);
       const sortedRows = Array.from(rowSet)
-        .filter(row => rowInRange(row, rowRange))
+        .filter(row => rowInRanges(row, rowRanges))
         .sort((a, b) => a - b);
 
       for (const row of sortedRows) {
@@ -599,8 +732,9 @@
 
       const logs = [
         `工作表：${sheet.name}`,
-        `命名列：${columnName(nameColumn)}`,
-        `行范围：${formatRowRange(rowRange)}`,
+        `标题列：${columnName(titleColumn)}`,
+        `图片所在列：${imageColumn ? columnName(imageColumn) : "全部列"}`,
+        `行条件：${formatRowRanges(rowRanges)}`,
         `检测到图片锚点：${data.anchors.length} 个`,
         `范围内可导出图片：${exportableCount} 张`
       ];
@@ -612,12 +746,13 @@
       return { rows, exportableCount, logs };
     }
 
-    async function exportImages(zip, workbook, sheet, nameColumn, rowRange, prefix) {
-      const data = await readSheetExportData(zip, workbook, sheet, nameColumn);
+    async function exportImages(zip, workbook, sheet, titleColumn, imageColumn, rowRanges, prefix) {
+      const data = await readSheetExportData(zip, workbook, sheet, titleColumn, imageColumn);
       const logs = [
         `工作表：${sheet.name}`,
-        `命名列：${columnName(nameColumn)}`,
-        `行范围：${formatRowRange(rowRange)}`
+        `标题列：${columnName(titleColumn)}`,
+        `图片所在列：${imageColumn ? columnName(imageColumn) : "全部列"}`,
+        `行条件：${formatRowRanges(rowRanges)}`
       ];
       const outputZip = new JSZip();
 
@@ -633,13 +768,13 @@
 
       for (const anchor of data.anchors) {
         const excelRow = anchor.row + 1;
-        if (!rowInRange(excelRow, rowRange)) {
+        if (!rowInRanges(excelRow, rowRanges)) {
           continue;
         }
 
         const rawName = data.rowNames.get(excelRow);
         if (!rawName || !rawName.trim()) {
-          logs.push(`跳过：第 ${excelRow} 行图片没有对应的命名列文本。`);
+          logs.push(`跳过：第 ${excelRow} 行图片没有对应的标题列文本。`);
           continue;
         }
 
@@ -661,10 +796,10 @@
       return { outputZip, count, logs };
     }
 
-    async function readSheetExportData(zip, workbook, sheet, nameColumn) {
+    async function readSheetExportData(zip, workbook, sheet, titleColumn, imageColumn) {
       const parser = new DOMParser();
       const worksheetDoc = parseXml(parser, await readText(zip, sheet.path), sheet.path);
-      const rowNames = readColumnValues(worksheetDoc, workbook.sharedStrings, nameColumn);
+      const rowNames = readColumnValues(worksheetDoc, workbook.sharedStrings, titleColumn);
       const drawingPath = await findDrawingPath(zip, parser, sheet.path, worksheetDoc);
 
       if (!drawingPath) {
@@ -675,7 +810,8 @@
       const drawingRelsPath = relsPathFor(drawingPath);
       const drawingRelsDoc = parseXml(parser, await readText(zip, drawingRelsPath), drawingRelsPath);
       const drawingRels = readRelationships(drawingRelsDoc);
-      const anchors = readImageAnchors(drawingDoc, drawingRels, drawingPath);
+      const anchors = readImageAnchors(drawingDoc, drawingRels, drawingPath)
+        .filter(anchor => !imageColumn || anchor.col + 1 === imageColumn);
 
       return { rowNames, drawingPath, anchors };
     }
@@ -740,16 +876,18 @@
       return anchorNodes.map(anchor => {
         const from = anchor.getElementsByTagNameNS("*", "from")[0];
         const rowNode = from && from.getElementsByTagNameNS("*", "row")[0];
+        const colNode = from && from.getElementsByTagNameNS("*", "col")[0];
         const blip = anchor.getElementsByTagNameNS("*", "blip")[0];
         const embedId = blip && (
           blip.getAttributeNS("http://schemas.openxmlformats.org/officeDocument/2006/relationships", "embed")
           || blip.getAttribute("r:embed")
         );
         const rel = embedId && drawingRels.get(embedId);
-        if (!rowNode || !rel) return null;
+        if (!rowNode || !colNode || !rel) return null;
 
         return {
           row: Number(rowNode.textContent || "0"),
+          col: Number(colNode.textContent || "0"),
           mediaPath: resolveTarget(drawingPath, rel.target)
         };
       }).filter(Boolean);
@@ -809,21 +947,25 @@
     }
 
     function parseColumn(input) {
-      if (!input) throw new Error("请输入命名列。");
+      if (!input) throw new Error("请输入标题列。");
       if (/^\d+$/.test(input)) {
         const value = Number(input);
-        if (value < 1) throw new Error("命名列必须大于 0。");
+        if (value < 1) throw new Error("标题列必须大于 0。");
         return value;
       }
 
       const text = input.toUpperCase();
-      if (!/^[A-Z]+$/.test(text)) throw new Error("命名列只能是 A、B、AA 或数字。");
+      if (!/^[A-Z]+$/.test(text)) throw new Error("标题列只能是 A、B、AA 或数字。");
 
       let value = 0;
       for (const char of text) {
         value = value * 26 + char.charCodeAt(0) - 64;
       }
       return value;
+    }
+
+    function parseOptionalColumn(input) {
+      return input ? parseColumn(input) : null;
     }
 
     function columnName(index) {
